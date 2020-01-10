@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# Usage:
+# $ kubectl shell
+
+# set -x # verbose
+set -o pipefail # exit on pipeline error
+set -e # exit on error
+set -u # variable must exist
+
+kubectl run --rm -it shell --image=busybox --restart=Never

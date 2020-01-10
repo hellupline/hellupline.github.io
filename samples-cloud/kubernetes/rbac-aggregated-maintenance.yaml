@@ -1,0 +1,60 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    name: deployment--maintenance
+aggregationRule:
+    clusterRoleSelectors:
+      - matchLabels:
+            deployment.rbac.example.com/aggregate-to-create: "true"
+            deployment.rbac.example.com/aggregate-to-read: "true"
+            deployment.rbac.example.com/aggregate-to-update: "true"
+rules: [] # Rules are automatically filled in by the controller manager.
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    name: deployment--create
+    labels:
+        deployment.rbac.example.com/aggregate-to-create: "true"
+# These rules will be added to the "monitoring" role.
+rules:
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "pods"]
+    verbs: ["create"]
+  - apiGroups: ["apps", "extensions"]
+    resources: ["deployments"]
+    verbs: ["create"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    name: deployment--read
+    labels:
+        deployment.rbac.example.com/aggregate-to-read: "true"
+# These rules will be added to the "monitoring" role.
+rules:
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps", "extensions"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    name: deployment--update
+    labels:
+        deployment.rbac.example.com/aggregate-to-update: "true"
+# These rules will be added to the "monitoring" role.
+rules:
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "pods"]
+    verbs: ["update", "patch"]
+  - apiGroups: ["apps", "extensions"]
+    resources: ["deployments"]
+    verbs: ["update", "patch"]

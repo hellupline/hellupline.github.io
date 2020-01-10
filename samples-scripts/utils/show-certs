@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# Usage:
+# show-certs "hellupline.dev"
+
+# set -x # verbose
+set -o pipefail # exit on pipeline error
+set -e # exit on error
+set -u # variable must exist
+
+die () {
+    echo >&2 "$@"
+    exit 1
+}
+
+[ "$#" -eq 1 ] || die "1 argument required, $# provided"
+
+DOMAIN="${1}"
+
+echo | openssl s_client -servername ${DOMAIN} -connect ${DOMAIN}:443 -showcerts | openssl x509 -text

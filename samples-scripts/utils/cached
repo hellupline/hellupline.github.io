@@ -1,0 +1,25 @@
+#!/bin/sh
+
+# Usage:
+# $ cached "command" "cache-file"
+
+# set -x # verbose
+set -o pipefail # exit on pipeline error
+set -e # exit on error
+set -u # variable must exist
+
+die () {
+    echo >&2 "$@"
+    exit 1
+}
+
+[ "$#" -eq 2 ] || die "2 argument required, $# provided"
+
+COMMAND="${1}"
+FILENAME="${2}"
+
+if [ -f "${FILENAME}" ]; then
+    cat "${FILENAME}"
+else
+    sh -c "${COMMAND}" | tee "${FILENAME}"
+fi

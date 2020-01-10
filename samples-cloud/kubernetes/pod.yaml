@@ -1,0 +1,108 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    labels: {app: my-app}
+    name: my-app
+    namespace: my-namespace
+spec:
+    affinity:
+        # repel same pods in node
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                  - {key: app, operator: In, values: [my-app]}
+        # attract cache pods
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                  - {key: app, operator: In, values: [my-app-cache]}
+
+    # resist node taint tags
+    tolerations:
+      - {key: role, operator: Equal, value: worker, effect: NoSchedule}
+      - {key: role, operator: Equal, value: worker, effect: NoExecute}
+
+    restartPolicy: Always
+    containers:
+      - name: my-app
+        imagePullPolicy: Always
+        image: nginx
+        cmd: ["sh", "-c"]
+        args: ["echo", "123"]
+
+        # pod environment
+        lifecycle:
+            postStart: {exec: {command: ["/bin/sh", "-c", "touch /tmp/hello"]}}
+            preStop: {exec: {command: ["/bin/sh", "-c", "echo Hello from the preSop handler > /tmp/hello"]}}
+        volumeMounts:
+          - {name: secret-files, mountPath: "/my-app/secret/", readOnly: true}
+          - {name: config-files, mountPath: "/my-app/config/", readOnly: true}
+          - {name: volume-files, mountPath: "/my-app/volume/", readOnly: false}
+          - {name: cached-files, mountPath: "/my-app/cached/", readOnly: false}
+        ports:
+          - {name: http, containerPort: 80, hostPort: 80}
+        resources:
+            requests: {memory: "32Mi", cpu: "50m"}
+            limits: {memory: "256Mi", cpu: "200m"}
+        envFrom:
+          - secretRef: {name: my-app-secret}
+          - configMapRef: {name: my-app-config}
+        env:
+          - {name: SECRET_ENV, valueFrom: {secretKeyRef: {name: my-app-secret, key: SECRET_ENV}}}
+          - {name: CONFIG_ENV, valueFrom: {configMapKeyRef: {name: my-app-config, key: CONFIG_ENV}}}
+          - {name: ENV_NAME, value: "ENV_VALUE"}
+          - {name: POD_NAMESPACE, valueFrom: {fieldRef: {fieldPath: metadata.name}}}
+
+        # pod health
+        readinessProbe:
+            httpGet:  # do a http request
+                httpHeaders: [{name: Host, value: "my-app.my-domain.com"}]
+                path: "/my-path/"
+                port: http
+                scheme: HTTP
+            tcpSocket:  # do a tcp socket probe
+                port: http
+            exec:  # run a command
+                command: ["cat", "/tmp/healthy"]
+            # probe settings
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 4
+            successThreshold: 1
+            failureThreshold: 5
+
+        livenessProbe:
+            httpGet:  # do a http request
+                httpHeaders: [{name: Host, value: "my-app.my-domain.com"}]
+                path: "/my-path/"
+                port: http
+                scheme: HTTP
+            tcpSocket:  # do a tcp socket probe
+                port: http
+            exec:  # run a command
+                command: [cat, "/tmp/healthy"]
+            # probe settings
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 4
+            successThreshold: 1
+            failureThreshold: 5
+
+    volumes:
+      - name: secret-files
+        secret:
+            secretName: my-app-secret
+            items:
+              - {key: SECRET_FILE, path: secret.json}
+      - name: config-files
+        configMap:
+            name: my-app-config
+            items:
+              - {key: CONFIG_FILE, path: config.json}
+      - {name: volume-files, persistentVolumeClaim: {claimName: my-pvc}}
+      - {name: cached-files, emptyDir: {}}
