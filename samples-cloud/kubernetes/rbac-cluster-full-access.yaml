@@ -1,6 +1,6 @@
 ---
-kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
 metadata:
     name: my-cluster-role--full-access
 rules:
@@ -16,8 +16,8 @@ metadata:
     namespace: my-namespace
 
 ---
-kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
 metadata:
     name: my-cluster-role-binding--full-access
 roleRef:

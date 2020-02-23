@@ -8,4 +8,4 @@ set -o pipefail # exit on pipeline error
 set -e # exit on error
 set -u # variable must exist
 
-date '+%Y-%m-%dT%T%z'
+date --utc '+%Y-%m-%dT%T%z'
