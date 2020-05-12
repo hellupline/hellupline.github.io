@@ -8,4 +8,4 @@ set -o pipefail # exit on pipeline error
 set -e # exit on error
 set -u # variable must exist
 
-date --utc '+%Y-%m-%dT%T%z'
+date --iso-8601=seconds --utc
