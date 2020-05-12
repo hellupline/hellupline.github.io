@@ -4,5 +4,5 @@ kind: PersistentVolumeClaim
 metadata:
     name: my-pvc
 spec:
-    resources: requests: {storage: 3Gi}
+    resources: {requests: {storage: 3Gi}}
     accessModes: [ReadWriteOnce]
