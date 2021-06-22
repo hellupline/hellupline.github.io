@@ -1,0 +1,225 @@
+# Copyright 2020 hellupline
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+---
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: 'Static Website with CDN.'
+
+Metadata:
+    AWS::CloudFormation::Interface:
+        ParameterGroups:
+          - Label: {default: 'Website Configuration'}
+            Parameters:
+              - AcmCertificateArn
+              - DomainNames
+          - Label: {default: 'Project Configuration'}
+            Parameters:
+              - ProjectName
+              - ProjectStack
+        ParameterLabels:
+            AcmCertificateArn: {default: 'SSL certificate to use for the CloudFront distribution.'}
+            DomainNames: {default: 'Domain names for this website.'}
+            ProjectName: {default: 'Name your project.'}
+            ProjectStack: {default: 'Which stack your project belongs?'}
+
+Parameters:
+    AcmCertificateArn:
+        Description: 'ACM Certificate. Must be created in the us-east-1!'
+        Type: String
+    DomainNames:
+        Description: 'The website domain name, comma separated list.'
+        Type: 'List<String>'
+    ProjectName:
+        Description: 'Name of your project.'
+        Type: String
+    ProjectStack:
+        Description: 'Stack of your project.'
+        Type: String
+
+Resources:
+    Distribution:
+        Type: AWS::CloudFront::Distribution
+        Properties:
+            DistributionConfig:
+                Comment: !Sub 'CDN for cloudformation ${AWS::StackName}'
+                Aliases: !Ref DomainNames
+                Enabled: true
+                HttpVersion: 'http2'
+                IPV6Enabled: true
+                PriceClass: 'PriceClass_All'
+                ViewerCertificate:
+                    AcmCertificateArn: !Ref AcmCertificateArn
+                    MinimumProtocolVersion: 'TLSv1.2_2018'
+                    SslSupportMethod: 'sni-only'
+                Origins:
+                  - DomainName: !GetAtt Bucket.DomainName
+                    Id: 's3origin'
+                    S3OriginConfig:
+                        OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}'
+                Logging:
+                    Bucket: !GetAtt LogsBucket.DomainName
+                DefaultCacheBehavior:
+                    TargetOriginId: 's3origin'
+                    ViewerProtocolPolicy: 'redirect-to-https'
+                    Compress: true
+                    SmoothStreaming: false
+                    MaxTTL: 86400 # in seconds
+                    MinTTL: 60 # in seconds
+                    DefaultTTL: 3600 # in seconds
+                    ForwardedValues:
+                        QueryString: false
+                        Cookies:
+                            Forward: 'none'
+                    AllowedMethods:
+                      - 'HEAD'
+                      - 'GET'
+                      - 'OPTIONS'
+                    CachedMethods:
+                      - 'HEAD'
+                      - 'GET'
+                      - 'OPTIONS'
+                DefaultRootObject: 'index.html'
+                CustomErrorResponses:
+                  - ErrorCachingMinTTL: 300
+                    ErrorCode: 403
+                    ResponseCode: 200
+                    ResponsePagePath: '/index.html'
+            Tags:
+              - {Key: Name, Value: !Ref ProjectName}
+              - {Key: stack, Value: !Ref ProjectStack}
+
+    CloudFrontOriginAccessIdentity:
+        Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+        Properties:
+            CloudFrontOriginAccessIdentityConfig:
+                Comment: !Sub 'access-identity-${Bucket.WebsiteURL}'
+
+    Bucket:
+        Type: AWS::S3::Bucket
+        UpdateReplacePolicy: Retain
+        DeletionPolicy: Retain
+        Properties:
+            AccessControl: Private
+            PublicAccessBlockConfiguration:
+                BlockPublicAcls: true
+                BlockPublicPolicy: true
+                IgnorePublicAcls: true
+                RestrictPublicBuckets: true
+            BucketEncryption:
+                ServerSideEncryptionConfiguration:
+                  - ServerSideEncryptionByDefault:
+                        SSEAlgorithm: AES256
+            VersioningConfiguration:
+                Status: Enabled
+            LifecycleConfiguration:
+                Rules:
+                  - Id: IncompleteUploads
+                    Status: Enabled
+                    AbortIncompleteMultipartUpload:
+                        DaysAfterInitiation: 7
+                  - Id: VersionsCleanup
+                    Status: Enabled
+                    NoncurrentVersionExpirationInDays: 365
+            Tags:
+              - {Key: Name, Value: !Ref ProjectName}
+              - {Key: stack, Value: !Ref ProjectStack}
+
+    BucketPolicy:
+        Type: AWS::S3::BucketPolicy
+        Properties:
+            Bucket: !Ref Bucket
+            PolicyDocument:
+                Statement:
+                  - Effect: Allow
+                    Principal:
+                        CanonicalUser: !GetAtt CloudFrontOriginAccessIdentity.S3CanonicalUserId
+                    Action:
+                      - 's3:GetObject'
+                    Resource:
+                      - !Sub '${Bucket.Arn}/*'
+
+    LogsBucket:
+        Type: AWS::S3::Bucket
+        UpdateReplacePolicy: Retain
+        DeletionPolicy: Retain
+        Properties:
+            AccessControl: Private
+            PublicAccessBlockConfiguration:
+                BlockPublicAcls: true
+                BlockPublicPolicy: true
+                IgnorePublicAcls: true
+                RestrictPublicBuckets: true
+            BucketEncryption:
+                ServerSideEncryptionConfiguration:
+                  - ServerSideEncryptionByDefault:
+                        SSEAlgorithm: AES256
+            VersioningConfiguration:
+                Status: Enabled
+            LifecycleConfiguration:
+                Rules:
+                  - Id: IncompleteUploads
+                    Status: Enabled
+                    AbortIncompleteMultipartUpload:
+                        DaysAfterInitiation: 7
+                  - Id: VersionCleanup
+                    Status: Enabled
+                    NoncurrentVersionExpirationInDays: 30
+            Tags:
+              - {Key: Name, Value: !Ref ProjectName}
+              - {Key: stack, Value: !Ref ProjectStack}
+
+    5xxErrorRateTooHighAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmDescription: !Sub '5xx errors on cloudfront ${Distribution}'
+            ActionsEnabled: true
+            AlarmActions: []
+            OKActions: []
+            InsufficientDataActions: []
+            Dimensions:
+              - {Name: Region, Value: Global}
+              - {Name: DistributionId, Value: !Ref Distribution}
+            Namespace: AWS/CloudFront
+            MetricName: 5xxErrorRate
+            EvaluationPeriods: 1
+            Period: 60
+            ComparisonOperator: GreaterThanThreshold
+            Statistic: Average
+            Threshold: 0
+            TreatMissingData: notBreaching
+
+Outputs:
+    DistributionId:
+        Value: !Ref Distribution
+    DistributionDomainName:
+        Value: !GetAtt Distribution.DomainName
+
+    Bucket:
+        Value: !Ref Bucket
+    BucketArn:
+        Value: !Ref Bucket.Arn
+    BucketDomainName:
+        Value: !Ref Bucket.DomainName
+    BucketDualStackDomainName:
+        Value: !Ref Bucket.DualStackDomainName
+    BucketRegionDomainName:
+        Value: !Ref Bucket.RegionDomainName
+    BucketWebsiteURL:
+        Value: !Ref Bucket.WebsiteURL
+
+    LogsBucket:
+        Value: !Ref LogsBucket
+    LogsBucketArn:
+        Value: !Ref LogsBucket.Arn
