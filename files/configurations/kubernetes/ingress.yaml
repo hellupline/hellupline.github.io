@@ -14,14 +14,14 @@ spec:
       - host: my-domain.com
         http:
             paths:
-              - {backend: {serviceName: my-other-app, servicePort: 80}, path: /my-other-app}
-              - {backend: {serviceName: my-app, servicePort: 80}}
+              - {path: '/my-other-app', pathType: Prefix, backend: {service: {name: my-other-app, port: {name: http}}}}
+              - {path: '/', pathType: Prefix, backend: {service: {name: my-app, port: {name: http}}}}
 
       # handle other domains, but without tls
       - http:
             paths:
-              - {backend: {serviceName: my-other-app, servicePort: 80}, path: /my-other-app}
-              - {backend: {serviceName: my-app, servicePort: 80}}
+              - {path: '/my-other-app', pathType: Prefix, backend: {service: {name: my-other-app, port: {name: http}}}}
+              - {path: '/', pathType: Prefix, backend: {service: {name: my-app, port: {name: http}}}}
 ---
 apiVersion: v1
 kind: Secret
