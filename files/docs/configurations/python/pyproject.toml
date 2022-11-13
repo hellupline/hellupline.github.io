@@ -1,0 +1,44 @@
+[tool.poetry]
+name = "example"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
+force_single_line = true
+atomic = true
+include_trailing_comma = true
+lines_after_imports = 2
+lines_between_types = 1
+use_parentheses = true
+skip_glob = ["*/setup.py"]
+filter_files = true
+
+[tool.black]
+line-length = 110
+target_version = ['py310']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | build
+  | dist
+  | tests/.*/setup.py
+)/
+'''
