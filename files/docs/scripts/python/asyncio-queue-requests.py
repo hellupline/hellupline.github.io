@@ -15,6 +15,7 @@ from typing import Any
 from typing import Callable
 from typing import Coroutine
 from urllib.parse import urlparse
+from urllib.parse import urlunparse
 
 from httpx import AsyncClient
 from pyquery import PyQuery
@@ -41,12 +42,14 @@ async def main():
             client=client,
             queue_output=queue_extract_urls,
         )
+        f_request_url.__name__ = _request_url.__name__
         f_extract_data = partial(
             _extract_data,
             event_completed=event_completed,
             queue_output_1=queue_request_urls,
             queue_output_2=queue_print_title,
         )
+        f_extract_data.__name__ = _extract_data.__name__
         tasks_request_urls = [
             create_task(queue_task(queue_input=queue_request_urls, task_index=i, function=f_request_url))
             for i in range(4)
@@ -120,7 +123,11 @@ async def _extract_data(
 ):
     text, base_url = data
     q = PyQuery(text).make_links_absolute(base_url=base_url)
-    urls = {u for u in (t.attrib.get("href", "") for t in q("a")) if _valid_url(u, base_url)} - visited
+    urls = {
+        _normalize_url(url)
+        for url in (tag.attrib.get("href", "") for tag in q("a"))
+        if _valid_url(url, base_url)
+    } - visited
     title = q("title").text().strip()
     visited.update(urls)
     for url in urls:
@@ -130,10 +137,14 @@ async def _extract_data(
     await queue_output_2.put(title)
 
 
+def _normalize_url(url: str) -> str:
+    return urlunparse(urlparse(url)._replace(fragment=""))
+
+
 def _valid_url(url: str, base_url: str) -> bool:
     base_u = urlparse(base_url)
     u = urlparse(url)
-    return base_u.hostname == u.hostname and u.path.endswith("/")
+    return (base_u.hostname == u.hostname) and (u.path.endswith("/")) and (u.fragment == "")
 
 
 async def _print_title(data: str):
