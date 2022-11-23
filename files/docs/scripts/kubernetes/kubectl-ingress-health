@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# Usage:
+# $ kubectl ingress health "my-ingress"
+
+# set -x # verbose
+set -o pipefail # exit on pipeline error
+set -e # exit on error
+set -u # variable must exist
+
+die () {
+    echo >&2 "$@"
+    exit 1
+}
+
+[ "$#" -eq 1 ] || die "No argument supplied"
+
+NAME="${1}"
+
+kubectl get --output json ingresses "${NAME}" | jq '.metadata.annotations."ingress.kubernetes.io/backends" | fromjson'

@@ -1,0 +1,25 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+    labels: {app: my-app}
+    name: my-app
+    namespace: my-namespace
+spec:
+    selector: {matchLabels: {app: my-app}}
+    replicas: 3
+    serviceName: my-app
+    template:
+        metadata: {labels: {app: my-app}}
+        spec:
+            containers:
+              - name: my-app
+                image: nginx
+                volumeMounts:
+                  - {name: my-app-data, mountPath: "/usr/share/nginx/html"}
+    volumeClaimTemplates:
+      - metadata: {name: my-app-data}
+        spec:
+            selector: {matchLabels: {app: my-app}}
+            resources: {requests: {storage: 1Gi}}
+            accessModes: [ReadWriteOnce]

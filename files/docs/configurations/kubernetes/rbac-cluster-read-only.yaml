@@ -1,0 +1,37 @@
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+    name: my-cluster-role--read-only
+rules:
+  - apiGroups: ["", "extensions", "apps", "batch"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: my-service-account
+    namespace: my-namespace
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+    name: my-cluster-role-binding--read-only
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: my-cluster-role--read-only
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: ServiceAccount
+    name: my-service-account
+    namespace: my-namespace
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: my-user
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: my-group

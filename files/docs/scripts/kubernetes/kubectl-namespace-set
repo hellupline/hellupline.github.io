@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# Usage:
+# $ kubectl namespace set "my-namespace"
+
+# set -x # verbose
+set -o pipefail # exit on pipeline error
+set -e # exit on error
+set -u # variable must exist
+
+die () {
+    echo >&2 "$@"
+    exit 1
+}
+
+[ "$#" -eq 1 ] || die "1 argument required, $# provided"
+
+NAME="${1}"
+
+kubectl config set-context "$(kubectl config current-context)" --namespace="${NAME}"

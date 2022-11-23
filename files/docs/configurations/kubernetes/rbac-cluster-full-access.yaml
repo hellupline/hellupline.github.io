@@ -1,0 +1,37 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+    name: my-cluster-role--full-access
+rules:
+  - apiGroups: ["", "extensions", "apps", "batch"]
+    resources: ["*"]
+    verbs: ["*"]
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: my-service-account
+    namespace: my-namespace
+
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+    name: my-cluster-role-binding--full-access
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: my-cluster-role--full-access
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: ServiceAccount
+    name: my-service-account
+    namespace: my-namespace
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: my-user
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: my-group

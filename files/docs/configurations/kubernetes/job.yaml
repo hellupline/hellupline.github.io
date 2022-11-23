@@ -1,0 +1,16 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+    labels: {app: my-job}
+    name: my-job
+    namespace: my-namespace
+spec:
+    template:
+        metadata: {labels: {app: my-job}}
+        spec:
+            restartPolicy: Never
+            containers:
+              - name: my-job
+                image: alpine
+                args: ["echo", "hello nurse"]
