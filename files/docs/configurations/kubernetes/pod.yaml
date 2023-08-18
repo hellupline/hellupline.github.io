@@ -40,6 +40,7 @@ spec:
             postStart: {exec: {command: ["/bin/sh", "-c", "touch /tmp/hello"]}}
             preStop: {exec: {command: ["/bin/sh", "-c", "echo Hello from the preSop handler > /tmp/hello"]}}
         volumeMounts:
+          - {name: config-files, mountPath: "/my-app/config/config.json", subPath: "config.json", readOnly: true}
           - {name: secret-files, mountPath: "/my-app/secret/", readOnly: true}
           - {name: config-files, mountPath: "/my-app/config/", readOnly: true}
           - {name: volume-files, mountPath: "/my-app/volume/", readOnly: false}
